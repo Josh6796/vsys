@@ -35,6 +35,7 @@ public final class ComponentFactory {
             throws Exception {
         /*
          * TODO: Here you can modify the code (if necessary) to instantiate your components
+         *  git test
          */
 
         Config config = new Config(componentId);
