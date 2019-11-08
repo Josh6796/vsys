@@ -2,6 +2,7 @@ package dslab;
 
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.Set;
 
 import dslab.mailbox.IMailboxServer;
 import dslab.mailbox.MailboxServer;
@@ -36,8 +37,15 @@ public final class ComponentFactory {
         /*
          * TODO: Here you can modify the code (if necessary) to instantiate your components
          */
-
         Config config = new Config(componentId);
+        /*
+        String userConfigStr = config.getString("users.config");
+        Config userConfig = new Config(userConfigStr.substring(0, userConfigStr.lastIndexOf('.')));
+        Set<String> users =  userConfig.listKeys();
+        for(String user : users){
+            config.setProperty(user, userConfig.getString(user));
+        }
+         */
         return new MonitoringServer(componentId, config, in, out);
     }
 
@@ -56,6 +64,11 @@ public final class ComponentFactory {
          */
 
         Config config = new Config(componentId);
+        Config userConfig = new Config("users-" + componentId.split("-", 2)[1]);
+        Set<String> users =  userConfig.listKeys();
+        for(String user : users){
+            config.setProperty(user, userConfig.getString(user));
+        }
         return new MailboxServer(componentId, config, in, out);
     }
 
@@ -72,8 +85,12 @@ public final class ComponentFactory {
         /*
          * TODO: Here you can modify the code (if necessary) to instantiate your components
          */
-
         Config config = new Config(componentId);
+        Config domainConfig = new Config("domains");
+        Set<String> domains =  domainConfig.listKeys();
+        for(String domain : domains){
+            config.setProperty(domain, domainConfig.getString(domain));
+        }
         return new TransferServer(componentId, config, in, out);
     }
 

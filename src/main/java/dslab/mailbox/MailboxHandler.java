@@ -1,4 +1,4 @@
-package dslab.transfer;
+package dslab.mailbox;
 
 import dslab.exceptions.DMTPException;
 import dslab.message.Message;
@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
 
-public class TransferHandler implements Runnable{
+public class MailboxHandler implements Runnable{
     private Socket socket;
     private Config config;
     private Scanner in;
@@ -19,7 +19,7 @@ public class TransferHandler implements Runnable{
     private boolean[] checks;
     private Message message;
 
-    TransferHandler(Socket socket, Config config) {
+    MailboxHandler(Socket socket, Config config) {
         this.socket = socket;
         this.config = config;
         this.itHasBegun = false;
@@ -88,7 +88,7 @@ public class TransferHandler implements Runnable{
                         out.println("error protocol error");
                         throw new DMTPException("error protocol error");
                     }
-                } catch (ArrayIndexOutOfBoundsException | IOException e) {
+                } catch (ArrayIndexOutOfBoundsException e) {
                     out.println("error protocol error");
                     throw new DMTPException("error protocol error");
                 }
@@ -100,27 +100,16 @@ public class TransferHandler implements Runnable{
     }
 
     private void processToCommand(String s) throws DMTPException {
-        String[] mails = s.split(",");
-        ArrayList<String> recipients = new ArrayList<>();
+        String[] addresses = s.split(",");
 
-        if (s.isEmpty()) {
-            out.println("error protocol error");
-            throw new DMTPException("error protocol error");
-        }
-        for (String str:mails) {
-            if (message.isValidEmailAddress(str)) {
-                recipients.add(str);
+        for (String address:addresses) {
+            String user = address.split("@")[0];
+            if (config.containsKey(user)) {
+                out.println("ok");
             } else {
-                out.println("error email address not valid");
-                throw new DMTPException("error email address not valid");
+                out.println("error unknown recipient " + user);
+                throw new DMTPException("error unknown recipient " + user);
             }
-        }
-        if (!recipients.isEmpty()) {
-            out.println("ok " + recipients.size());
-            message.setRecipients(recipients);
-        } else {
-            out.println("error protocol error");
-            throw new DMTPException("error protocol error");
         }
     }
 
@@ -134,31 +123,7 @@ public class TransferHandler implements Runnable{
         }
     }
 
-    private void processSendCommand() throws IOException {
-        for (String recipient : message.getRecipients()) {
-            String domain = recipient.split("@")[1];
-            if (config.containsKey(domain)) {
-                String host = config.getString(domain).split(":")[0];
-                int port = Integer.parseInt(config.getString(domain).split(":")[1]);
-                var socket = new Socket(host, port);
-                var inSend = new Scanner(socket.getInputStream());
-                var outSend = new PrintWriter(socket.getOutputStream(), true);
-                System.out.println("Connected with Mailbox Server " + domain);
-                System.out.println(inSend.nextLine());
-                System.out.println("begin");
-                outSend.write("begin\n");
-                outSend.flush();
-                System.out.println(inSend.nextLine());
-                outSend.write("to " + recipient + "\n");
-                System.out.println("to " + recipient);
-                outSend.flush();
-                System.out.println(inSend.nextLine());
-                System.out.println("quit");
-                outSend.write("quit\n");
-                outSend.flush();
-                System.out.println(inSend.nextLine());
-            }
-        }
+    private void processSendCommand() {
     }
 
     private void checkWhichAreFalse(boolean[] checks) {

@@ -5,7 +5,6 @@ import java.net.ServerSocket;
 import java.util.concurrent.Executors;
 
 import dslab.ComponentFactory;
-import dslab.test.CapatalizeServer;
 import dslab.util.Config;
 
 public class TransferServer implements ITransferServer, Runnable {
@@ -39,7 +38,7 @@ public class TransferServer implements ITransferServer, Runnable {
             System.out.println("The tranfer server is running...");
             var pool = Executors.newFixedThreadPool(20);
             while (true) {
-                pool.execute(new TransferHandler(listener.accept()));
+                pool.execute(new TransferHandler(listener.accept(), config));
             }
         } catch (IOException e) {
             e.printStackTrace();
