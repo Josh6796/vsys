@@ -2,6 +2,8 @@ package dslab.monitoring;
 
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.net.DatagramSocket;
+import java.net.ServerSocket;
 
 import dslab.ComponentFactory;
 import dslab.util.Config;
@@ -16,8 +18,19 @@ public class MonitoringServer implements IMonitoringServer {
      * @param in the input stream to read console input from
      * @param out the output stream to write console output to
      */
+
+    private DatagramSocket server;
+    private String componentId;
+    private Config config;
+    private InputStream in;
+    private PrintStream out;
+
     public MonitoringServer(String componentId, Config config, InputStream in, PrintStream out) {
         // TODO
+        this.componentId = componentId;
+        this.config = config;
+        this.in = in;
+        this.out = out;
     }
 
     @Override

@@ -1,13 +1,13 @@
 package dslab.mailbox;
 
 import dslab.exceptions.DMAPException;
+import dslab.exceptions.DMTPException;
 import dslab.message.Message;
 import dslab.util.Config;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.Scanner;
+import java.util.*;
 
 public class MailboxDMAPHandler implements Runnable{
     private Socket socket;
@@ -15,15 +15,14 @@ public class MailboxDMAPHandler implements Runnable{
     private Scanner in;
     private PrintWriter out;
     private boolean loggedIn;
-    private boolean[] checks;
-    private Message message;
+    private Hashtable<String, HashMap<Integer,Message>> userMessages;
+    private String currentUser;
 
-    MailboxDMAPHandler(Socket socket, Config config) {
+    MailboxDMAPHandler(Socket socket, Config config, Hashtable<String,HashMap<Integer,Message>> userMessages) {
         this.socket = socket;
         this.config = config;
         this.loggedIn = false;
-        this.checks = new boolean[4];
-        Arrays.fill(checks, false);
+        this.userMessages = userMessages;
     }
 
     @Override
@@ -35,7 +34,7 @@ public class MailboxDMAPHandler implements Runnable{
         } catch (Exception e) {
             System.out.println("Error:" + socket + " on DMAP Server");
         } finally {
-            try { socket.close(); } catch (IOException e) {}
+            try { socket.close(); } catch (IOException ignored) {}
             System.out.println("Closed: " + socket + " on DMAP Server");
         }
     }
@@ -49,89 +48,93 @@ public class MailboxDMAPHandler implements Runnable{
     private void processCommands() throws DMAPException {
         while (in.hasNextLine()) {
             var command = in.nextLine();
-            if (command.equals("quit")) {
-                out.println("ok bye");
-                return;
-            } else if (command.split(" ", 2)[0].equals("login")) {
-                processLoginCommand(command.split(" ", 2)[1]);
-            } else if (loggedIn) {
-                try {
-                    if (command.equals("list")) {
+            try {
+                if (command.equals("quit")) {
+                    out.println("ok bye");
+                    return;
+                } else if (command.split(" ", 2)[0].equals("login")) {
+                    processLoginCommand(command.split(" ", 2)[1]);
+                } else if (command.equals("list")) {
+                    if (loggedIn) {
                         processListCommand();
-                        checks[0] = true;
-                    }
-                    else if (command.split(" ", 2)[0].equals("show")) {
+                    } else out.println("error not logged in");
+                } else if (command.split(" ", 2)[0].equals("show")) {
+                    if (loggedIn) {
                         processShowCommand(command.split(" ")[1]);
-                        checks[1] = true;
-                    }
-                    else if (command.split(" ", 2)[0].equals("delete")) {
+                    } else out.println("error not logged in");
+                } else if (command.split(" ", 2)[0].equals("delete")) {
+                    if (loggedIn) {
                         processDeleteCommand(command.split(" ")[1]);
-                        checks[2] = true;
-                    }
-                    else if (command.equals("logout")) {
-                        processLogoutCommand();
-                    } else {
-                        out.println("error protocol error");
-                        throw new DMAPException("error protocol error");
-                    }
-                } catch (ArrayIndexOutOfBoundsException e) {
+                    } else out.println("error not logged in");
+                } else if (command.equals("logout")) {
+                    if (loggedIn) {
+                        loggedIn = false;
+                        out.println("ok");
+                    } else out.println("error not logged in");
+                } else {
                     out.println("error protocol error");
                     throw new DMAPException("error protocol error");
                 }
-            } else {
+            } catch (ArrayIndexOutOfBoundsException e) {
                 out.println("error protocol error");
                 throw new DMAPException("error protocol error");
             }
         }
     }
 
-
     private void processLoginCommand(String login) {
-        String user = login.split(" ", 2)[0];
-        int password = Integer.parseInt(login.split(" ", 2)[1]);
-        if (config.containsKey(user)) {
-            if(config.getInt(user) == password) {
-                out.println("ok");
-                loggedIn = true;
+        currentUser = login.split(" ", 2)[0];
+        try {
+            int password = Integer.parseInt(login.split(" ", 2)[1]);
+            if (config.containsKey(currentUser)) {
+                if(config.getInt(currentUser) == password) {
+                    out.println("ok");
+                    loggedIn = true;
+                } else {
+                    out.println("error wrong password");
+                }
             } else {
-                out.println("error wrong password");
+                out.println("error unknown user");
             }
-        } else {
-            out.println("error unknown user");
+        } catch(NumberFormatException e) {
+            out.println("error wrong password");
         }
+
     }
 
     private void processListCommand() {
+        Message message;
+        if (userMessages.get(currentUser) != null && !userMessages.get(currentUser).isEmpty()) {
+            for (int key : userMessages.get(currentUser).keySet()) {
+                message = userMessages.get(currentUser).get(key);
+                out.println(key + " " + message.getSender() + " " + message.getSubject());
+            }
+        } else {
+            out.println("error no messages");
+        }
     }
 
     private void processShowCommand(String s) {
+        int id = Integer.parseInt(s);
+        if (userMessages.get(currentUser) != null && userMessages.get(currentUser).containsKey(id)) {
+            Message message = userMessages.get(currentUser).get(id);
+            out.println("from " + message.getSender());
+            out.println("to " + message.recipientsString());
+            out.println("subject " + message.getSubject());
+            out.println("data " + message.getContent());
+        } else {
+            out.println("error no message found");
+        }
+
     }
 
     private void processDeleteCommand(String s) {
-    }
-
-    private void processLogoutCommand() {
-        loggedIn = false;
-    }
-
-    private void checkWhichAreFalse(boolean[] checks) {
-        if (!checks[0]) {
-            out.println("error no recipients");
+        int id = Integer.parseInt(s);
+        if (userMessages.get(currentUser).containsKey(id)) {
+            userMessages.get(currentUser).remove(id);
+            out.println("ok");
+        } else {
+            out.println("error unknown message id");
         }
-        if (!checks[1]) {
-            out.println("error no sender");
-        }
-        if (!checks[2]) {
-            out.println("error no subject");
-        }
-        if (!checks[3]) {
-            out.println("error no content");
-        }
-    }
-
-    private static boolean areAllTrue(boolean[] array)
-    {
-        for(boolean b : array) if(!b) return false;
-        return true;
     }
 }

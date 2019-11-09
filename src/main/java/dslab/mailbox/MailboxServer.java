@@ -4,9 +4,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.ServerSocket;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.List;
 import java.util.concurrent.Executors;
 
 import dslab.ComponentFactory;
+import dslab.message.Message;
 import dslab.util.Config;
 
 public class MailboxServer implements IMailboxServer, Runnable {
@@ -16,6 +20,8 @@ public class MailboxServer implements IMailboxServer, Runnable {
     private Config config;
     private InputStream in;
     private PrintStream out;
+    private Hashtable<String,HashMap<Integer,Message>> userMessages;
+
     /**
      * Creates a new server instance.
      *
@@ -35,12 +41,13 @@ public class MailboxServer implements IMailboxServer, Runnable {
     @Override
     public void run() {
         // TODO
+        userMessages = new Hashtable<String, HashMap<Integer,Message>>();
         new Thread(() -> {
             try (var dmtpListener = new ServerSocket(config.getInt("dmtp.tcp.port"))) {
                 System.out.println("The mailbox DMTP server is running...");
                 var pool = Executors.newFixedThreadPool(20);
                 while (true) {
-                    pool.execute(new MailboxDMTPHandler(dmtpListener.accept(), config));
+                    pool.execute(new MailboxDMTPHandler(dmtpListener.accept(), config, userMessages));
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -51,7 +58,7 @@ public class MailboxServer implements IMailboxServer, Runnable {
                 System.out.println("The mailbox DMAP server is running...");
                 var pool = Executors.newFixedThreadPool(20);
                 while (true) {
-                    pool.execute(new MailboxDMAPHandler(dmapListener.accept(), config));
+                    pool.execute(new MailboxDMAPHandler(dmapListener.accept(), config, userMessages));
                 }
             } catch (IOException e) {
                 e.printStackTrace();

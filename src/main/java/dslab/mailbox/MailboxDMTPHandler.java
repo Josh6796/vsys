@@ -16,13 +16,15 @@ public class MailboxDMTPHandler implements Runnable{
     private boolean itHasBegun;
     private boolean[] checks;
     private Message message;
+    private Hashtable<String,HashMap<Integer,Message>> userMessages;
 
-    MailboxDMTPHandler(Socket socket, Config config) {
+    MailboxDMTPHandler(Socket socket, Config config, Hashtable<String,HashMap<Integer,Message>> userMessages) {
         this.socket = socket;
         this.config = config;
         this.itHasBegun = false;
         this.checks = new boolean[4];
         Arrays.fill(checks, false);
+        this.userMessages = userMessages;
     }
 
     @Override
@@ -34,7 +36,7 @@ public class MailboxDMTPHandler implements Runnable{
         } catch (Exception e) {
             System.out.println("Error:" + socket + " on DMTP Server");
         } finally {
-            try { socket.close(); } catch (IOException e) {}
+            try { socket.close(); } catch (IOException ignored) {}
             System.out.println("Closed: " + socket + " on DMTP Server");
         }
     }
@@ -129,11 +131,13 @@ public class MailboxDMTPHandler implements Runnable{
     }
 
     private void processSendCommand() {
-        Hashtable<String,List<Message>> userMessages = new Hashtable<String,List<Message>>();
-
+        int messageCount = 0;
         for (String recipient : message.getRecipients()) {
             String user = recipient.split("@")[0];
-            put(userMessages, user, message);
+            if (userMessages.get(user) != null) {
+                messageCount = userMessages.get(user).size();
+            }
+            put(userMessages, user, ++messageCount, message);
         }
         out.println("Hashtable stored: " + userMessages);
     }
@@ -162,8 +166,8 @@ public class MailboxDMTPHandler implements Runnable{
         return true;
     }
 
-    private static void put(Hashtable<String, List<Message>> ht, String key, Message value) {
-        List<Message> list = ht.computeIfAbsent(key, k -> new ArrayList<Message>());
-        list.add(value);
+    private static void put(Hashtable<String, HashMap<Integer, Message>> ht, String key, int id, Message value) {
+        HashMap<Integer, Message> hashMap = ht.computeIfAbsent(key, k -> new HashMap<Integer, Message>());
+        hashMap.put(id, value);
     }
 }

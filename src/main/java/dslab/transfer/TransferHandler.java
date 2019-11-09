@@ -4,9 +4,12 @@ import dslab.exceptions.DMTPException;
 import dslab.message.Message;
 import dslab.util.Config;
 
+import javax.swing.plaf.TableHeaderUI;
 import java.io.*;
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 public class TransferHandler implements Runnable{
     private Socket socket;
@@ -16,6 +19,7 @@ public class TransferHandler implements Runnable{
     private boolean itHasBegun;
     private boolean[] checks;
     private Message message;
+    private BlockingQueue<Message> messageQueue;
 
     TransferHandler(Socket socket, Config config) {
         this.socket = socket;
@@ -23,6 +27,7 @@ public class TransferHandler implements Runnable{
         this.itHasBegun = false;
         this.checks = new boolean[4];
         Arrays.fill(checks, false);
+        messageQueue = new ArrayBlockingQueue<>(10);
     }
 
     @Override
@@ -30,11 +35,12 @@ public class TransferHandler implements Runnable{
         System.out.println("Connected: " + socket);
         try {
             setup();
+            startSendCommandThread();
             processCommands();
         } catch (Exception e) {
             System.out.println("Error:" + socket);
         } finally {
-            try { socket.close(); } catch (IOException e) {}
+            try { socket.close(); } catch (IOException ignored) {}
             System.out.println("Closed: " + socket);
         }
     }
@@ -78,7 +84,7 @@ public class TransferHandler implements Runnable{
                     else if (command.equals("send")) {
                         if (areAllTrue(checks)) {
                             out.println("ok");
-                            processSendCommand();
+                            messageQueue.put(message);
                         } else {
                             checkWhichAreFalse(checks);
                         }
@@ -86,7 +92,7 @@ public class TransferHandler implements Runnable{
                         out.println("error protocol error");
                         throw new DMTPException("error protocol error");
                     }
-                } catch (ArrayIndexOutOfBoundsException | IOException e) {
+                } catch (ArrayIndexOutOfBoundsException | InterruptedException e) {
                     out.println("error protocol error");
                     throw new DMTPException("error protocol error");
                 }
@@ -165,8 +171,6 @@ public class TransferHandler implements Runnable{
             System.out.println("from " + message.getSender());
             outSend.write("from " + message.getSender() + "\n");
             outSend.flush();
-            System.out.println(inSend.nextLine());
-            System.out.println("subject " + message.getSubject());
             outSend.write("subject " + message.getSubject() + "\n");
             outSend.flush();
             System.out.println(inSend.nextLine());
@@ -182,7 +186,23 @@ public class TransferHandler implements Runnable{
             outSend.write("quit\n");
             outSend.flush();
             System.out.println(inSend.nextLine());
+            System.out.println(inSend.nextLine());
+            System.out.println(inSend.nextLine());
         }
+    }
+
+    private void startSendCommandThread() throws InterruptedException {
+        final Runnable consumer = () -> {
+            while (true) {
+                try {
+                    message = messageQueue.take();
+                    processSendCommand();
+                } catch (InterruptedException | IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        new Thread(consumer).start();
     }
 
     private void checkWhichAreFalse(boolean[] checks) {
