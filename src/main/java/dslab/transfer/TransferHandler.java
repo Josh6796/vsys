@@ -154,40 +154,28 @@ public class TransferHandler implements Runnable{
             var socket = new Socket(host, port);
             var inSend = new Scanner(socket.getInputStream());
             var outSend = new PrintWriter(socket.getOutputStream(), true);
-            System.out.println("Connected with Mailbox Server " + domain);
-            System.out.println(inSend.nextLine());
-            System.out.println("begin");
             outSend.write("begin\n");
             outSend.flush();
-            System.out.println(inSend.nextLine());
             StringJoiner joiner = new StringJoiner(",");
             for (String user : domainsWithUsers.get(domain)) {
                 joiner.add(user + "@" + domain);
             }
-            System.out.println("to " + joiner.toString());
             outSend.write("to " + joiner.toString() + "\n");
             outSend.flush();
-            System.out.println(inSend.nextLine());
-            System.out.println("from " + message.getSender());
+            if (inSend.nextLine().startsWith("error unknown recipient")) {
+                sendErrorMessage();
+                return;
+            }
             outSend.write("from " + message.getSender() + "\n");
             outSend.flush();
             outSend.write("subject " + message.getSubject() + "\n");
             outSend.flush();
-            System.out.println(inSend.nextLine());
-            System.out.println("data " + message.getContent());
             outSend.write("data " + message.getContent() + "\n");
             outSend.flush();
-            System.out.println(inSend.nextLine());
-            System.out.println("send");
             outSend.write("send\n");
             outSend.flush();
-            System.out.println(inSend.nextLine());
-            System.out.println("quit");
             outSend.write("quit\n");
             outSend.flush();
-            System.out.println(inSend.nextLine());
-            System.out.println(inSend.nextLine());
-            System.out.println(inSend.nextLine());
         }
     }
 
@@ -203,6 +191,36 @@ public class TransferHandler implements Runnable{
             }
         };
         new Thread(consumer).start();
+    }
+
+    private void sendErrorMessage() throws IOException {
+        String user = message.getSender().split("@")[0];
+        String domain = message.getSender().split("@")[1];
+
+        if (config.containsKey(domain)) {
+            String host = config.getString(domain).split(":")[0];
+            int port = Integer.parseInt(config.getString(domain).split(":")[1]);
+            var socket = new Socket(host, port);
+            var inSend = new Scanner(socket.getInputStream());
+            var outSend = new PrintWriter(socket.getOutputStream(), true);
+            outSend.write("begin\n");
+            outSend.flush();
+            outSend.write("to " + message.getSender() + "\n");
+            outSend.flush();
+            if (inSend.nextLine().startsWith("error unknown recipient")) {
+                return;
+            }
+            outSend.write("from " + message.getSender() + "\n");
+            outSend.flush();
+            outSend.write("subject error mail not delivered\n");
+            outSend.flush();
+            outSend.write("data error unkown recipient " + user + "\n");
+            outSend.flush();
+            outSend.write("send\n");
+            outSend.flush();
+            outSend.write("quit\n");
+            outSend.flush();
+        }
     }
 
     private void checkWhichAreFalse(boolean[] checks) {

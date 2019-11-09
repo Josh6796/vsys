@@ -7,6 +7,7 @@ import dslab.util.Config;
 import java.io.*;
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MailboxDMTPHandler implements Runnable{
     private Socket socket;
@@ -17,6 +18,7 @@ public class MailboxDMTPHandler implements Runnable{
     private boolean[] checks;
     private Message message;
     private Hashtable<String,HashMap<Integer,Message>> userMessages;
+    private static AtomicInteger messageCount = new AtomicInteger(0);;
 
     MailboxDMTPHandler(Socket socket, Config config, Hashtable<String,HashMap<Integer,Message>> userMessages) {
         this.socket = socket;
@@ -108,7 +110,7 @@ public class MailboxDMTPHandler implements Runnable{
             String user = address.split("@")[0];
             if (!config.containsKey(user)) {
                 out.println("error unknown recipient " + user);
-                throw new DMTPException("error unknown recipient " + user);
+                return;
             }
         }
         if (!recipients.isEmpty()) {
@@ -131,15 +133,13 @@ public class MailboxDMTPHandler implements Runnable{
     }
 
     private void processSendCommand() {
-        int messageCount = 0;
         for (String recipient : message.getRecipients()) {
             String user = recipient.split("@")[0];
-            if (userMessages.get(user) != null) {
-                messageCount = userMessages.get(user).size();
+            synchronized (userMessages) {
+                int id = messageCount.incrementAndGet();
+                put(userMessages, user, id, message);
             }
-            put(userMessages, user, ++messageCount, message);
         }
-        out.println("Hashtable stored: " + userMessages);
     }
 
     private void checkWhichAreFalse(boolean[] checks) {

@@ -34,16 +34,17 @@ public class TransferServer implements ITransferServer, Runnable {
     @Override
     public void run() {
         // TODO
-        try (var listener = new ServerSocket(config.getInt("tcp.port"))) {
-            System.out.println("The tranfer server is running...");
-            var pool = Executors.newFixedThreadPool(20);
-            while (true) {
-                pool.execute(new TransferHandler(listener.accept(), config));
+        new Thread(() -> {
+            try (var listener = new ServerSocket(config.getInt("tcp.port"))) {
+                System.out.println("The tranfer server is running...");
+                var pool = Executors.newFixedThreadPool(20);
+                while (true) {
+                    pool.execute(new TransferHandler(listener.accept(), config));
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        shutdown();
+        }).start();
     }
 
     @Override

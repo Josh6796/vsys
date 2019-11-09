@@ -1,7 +1,6 @@
 package dslab.mailbox;
 
 import dslab.exceptions.DMAPException;
-import dslab.exceptions.DMTPException;
 import dslab.message.Message;
 import dslab.util.Config;
 
@@ -60,11 +59,11 @@ public class MailboxDMAPHandler implements Runnable{
                     } else out.println("error not logged in");
                 } else if (command.split(" ", 2)[0].equals("show")) {
                     if (loggedIn) {
-                        processShowCommand(command.split(" ")[1]);
+                        processShowCommand(command.split(" ",2)[1]);
                     } else out.println("error not logged in");
                 } else if (command.split(" ", 2)[0].equals("delete")) {
                     if (loggedIn) {
-                        processDeleteCommand(command.split(" ")[1]);
+                        processDeleteCommand(command.split(" ", 2)[1]);
                     } else out.println("error not logged in");
                 } else if (command.equals("logout")) {
                     if (loggedIn) {
@@ -75,9 +74,8 @@ public class MailboxDMAPHandler implements Runnable{
                     out.println("error protocol error");
                     throw new DMAPException("error protocol error");
                 }
-            } catch (ArrayIndexOutOfBoundsException e) {
-                out.println("error protocol error");
-                throw new DMAPException("error protocol error");
+            } catch (Exception e) {
+                e.printStackTrace(out);
             }
         }
     }
@@ -99,7 +97,6 @@ public class MailboxDMAPHandler implements Runnable{
         } catch(NumberFormatException e) {
             out.println("error wrong password");
         }
-
     }
 
     private void processListCommand() {
@@ -115,26 +112,33 @@ public class MailboxDMAPHandler implements Runnable{
     }
 
     private void processShowCommand(String s) {
-        int id = Integer.parseInt(s);
-        if (userMessages.get(currentUser) != null && userMessages.get(currentUser).containsKey(id)) {
-            Message message = userMessages.get(currentUser).get(id);
-            out.println("from " + message.getSender());
-            out.println("to " + message.recipientsString());
-            out.println("subject " + message.getSubject());
-            out.println("data " + message.getContent());
-        } else {
-            out.println("error no message found");
+        try {
+            int id = Integer.parseInt(s);
+            if (userMessages.get(currentUser) != null && userMessages.get(currentUser).containsKey(id)) {
+                Message message = userMessages.get(currentUser).get(id);
+                out.println("from " + message.getSender());
+                out.println("to " + message.recipientsString());
+                out.println("subject " + message.getSubject());
+                out.println("data " + message.getContent());
+            } else {
+                out.println("error no message found");
+            }
+        } catch(NumberFormatException e) {
+            out.println("error id has to be int");
         }
-
     }
 
     private void processDeleteCommand(String s) {
-        int id = Integer.parseInt(s);
-        if (userMessages.get(currentUser).containsKey(id)) {
-            userMessages.get(currentUser).remove(id);
-            out.println("ok");
-        } else {
-            out.println("error unknown message id");
+        try {
+            int id = Integer.parseInt(s);
+            if (userMessages.get(currentUser).containsKey(id)) {
+                userMessages.get(currentUser).remove(id);
+                out.println("ok");
+            } else {
+                out.println("error unknown message id");
+            }
+        } catch(NumberFormatException e) {
+            out.println("error id has to be int");
         }
     }
 }
