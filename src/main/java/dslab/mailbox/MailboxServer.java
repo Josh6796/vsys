@@ -35,15 +35,28 @@ public class MailboxServer implements IMailboxServer, Runnable {
     @Override
     public void run() {
         // TODO
-        try (var listener = new ServerSocket(config.getInt("dmtp.tcp.port"))) {
-            System.out.println("The mailbox server is running...");
-            var pool = Executors.newFixedThreadPool(20);
-            while (true) {
-                pool.execute(new MailboxHandler(listener.accept(), config));
+        new Thread(() -> {
+            try (var dmtpListener = new ServerSocket(config.getInt("dmtp.tcp.port"))) {
+                System.out.println("The mailbox DMTP server is running...");
+                var pool = Executors.newFixedThreadPool(20);
+                while (true) {
+                    pool.execute(new MailboxDMTPHandler(dmtpListener.accept(), config));
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        }).start();
+        new Thread(() -> {
+            try (var dmapListener = new ServerSocket(config.getInt("dmap.tcp.port"))) {
+                System.out.println("The mailbox DMAP server is running...");
+                var pool = Executors.newFixedThreadPool(20);
+                while (true) {
+                    pool.execute(new MailboxDMAPHandler(dmapListener.accept(), config));
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
         shutdown();
     }
 

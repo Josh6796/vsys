@@ -6,11 +6,9 @@ import dslab.util.Config;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Scanner;
+import java.util.*;
 
-public class MailboxHandler implements Runnable{
+public class MailboxDMTPHandler implements Runnable{
     private Socket socket;
     private Config config;
     private Scanner in;
@@ -19,7 +17,7 @@ public class MailboxHandler implements Runnable{
     private boolean[] checks;
     private Message message;
 
-    MailboxHandler(Socket socket, Config config) {
+    MailboxDMTPHandler(Socket socket, Config config) {
         this.socket = socket;
         this.config = config;
         this.itHasBegun = false;
@@ -29,22 +27,22 @@ public class MailboxHandler implements Runnable{
 
     @Override
     public void run() {
-        System.out.println("Connected: " + socket);
+        System.out.println("Connected: " + socket + " on DMTP Server");
         try {
             setup();
             processCommands();
         } catch (Exception e) {
-            System.out.println("Error:" + socket);
+            System.out.println("Error:" + socket + " on DMTP Server");
         } finally {
             try { socket.close(); } catch (IOException e) {}
-            System.out.println("Closed: " + socket);
+            System.out.println("Closed: " + socket + " on DMTP Server");
         }
     }
 
     private void setup() throws IOException {
         in = new Scanner(socket.getInputStream());
         out = new PrintWriter(socket.getOutputStream(), true);
-        out.println("ok DTMP");
+        out.println("ok DMTP");
     }
 
     private void processCommands() throws DMTPException {
@@ -73,14 +71,14 @@ public class MailboxHandler implements Runnable{
                         checks[2] = true;
                     }
                     else if (command.split(" ", 2)[0].equals("data")) {
-                        message.setContent(command.split(" ")[1]);
+                        message.setContent(command.split(" ", 2)[1]);
                         out.println("ok");
                         checks[3] = true;
                     }
                     else if (command.equals("send")) {
                         if (areAllTrue(checks)) {
-                            processSendCommand();
                             out.println("ok");
+                            processSendCommand();
                         } else {
                             checkWhichAreFalse(checks);
                         }
@@ -101,15 +99,22 @@ public class MailboxHandler implements Runnable{
 
     private void processToCommand(String s) throws DMTPException {
         String[] addresses = s.split(",");
+        ArrayList<String> recipients = new ArrayList<>();
 
         for (String address:addresses) {
+            recipients.add(address);
             String user = address.split("@")[0];
-            if (config.containsKey(user)) {
-                out.println("ok");
-            } else {
+            if (!config.containsKey(user)) {
                 out.println("error unknown recipient " + user);
                 throw new DMTPException("error unknown recipient " + user);
             }
+        }
+        if (!recipients.isEmpty()) {
+            out.println("ok " + recipients.size());
+            message.setRecipients(recipients);
+        } else {
+            out.println("error protocol error");
+            throw new DMTPException("error protocol error");
         }
     }
 
@@ -124,26 +129,41 @@ public class MailboxHandler implements Runnable{
     }
 
     private void processSendCommand() {
+        Hashtable<String,List<Message>> userMessages = new Hashtable<String,List<Message>>();
+
+        for (String recipient : message.getRecipients()) {
+            String user = recipient.split("@")[0];
+            put(userMessages, user, message);
+        }
+        out.println("Hashtable stored: " + userMessages);
     }
 
     private void checkWhichAreFalse(boolean[] checks) {
+        StringJoiner joiner = new StringJoiner(" ");
+        joiner.add("error");
         if (!checks[0]) {
-            out.println("error no recipients");
+            joiner.add("no recipients");
         }
         if (!checks[1]) {
-            out.println("error no sender");
+            joiner.add("no sender");
         }
         if (!checks[2]) {
-            out.println("error no subject");
+            joiner.add("no subject");
         }
         if (!checks[3]) {
-            out.println("error no content");
+            joiner.add("no content");
         }
+        out.println(joiner.toString());
     }
 
     private static boolean areAllTrue(boolean[] array)
     {
         for(boolean b : array) if(!b) return false;
         return true;
+    }
+
+    private static void put(Hashtable<String, List<Message>> ht, String key, Message value) {
+        List<Message> list = ht.computeIfAbsent(key, k -> new ArrayList<Message>());
+        list.add(value);
     }
 }

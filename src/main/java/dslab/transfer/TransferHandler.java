@@ -6,9 +6,7 @@ import dslab.util.Config;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Scanner;
+import java.util.*;
 
 public class TransferHandler implements Runnable{
     private Socket socket;
@@ -44,7 +42,7 @@ public class TransferHandler implements Runnable{
     private void setup() throws IOException {
         in = new Scanner(socket.getInputStream());
         out = new PrintWriter(socket.getOutputStream(), true);
-        out.println("ok DTMP");
+        out.println("ok DMTP");
     }
 
     private void processCommands() throws DMTPException {
@@ -73,14 +71,14 @@ public class TransferHandler implements Runnable{
                         checks[2] = true;
                     }
                     else if (command.split(" ", 2)[0].equals("data")) {
-                        message.setContent(command.split(" ")[1]);
+                        message.setContent(command.split(" ", 2)[1]);
                         out.println("ok");
                         checks[3] = true;
                     }
                     else if (command.equals("send")) {
                         if (areAllTrue(checks)) {
-                            processSendCommand();
                             out.println("ok");
+                            processSendCommand();
                         } else {
                             checkWhichAreFalse(checks);
                         }
@@ -135,50 +133,84 @@ public class TransferHandler implements Runnable{
     }
 
     private void processSendCommand() throws IOException {
+        Hashtable<String,List<String>> domainsWithUsers = new Hashtable<String,List<String>>();
+
         for (String recipient : message.getRecipients()) {
+            String user = recipient.split("@")[0];
             String domain = recipient.split("@")[1];
             if (config.containsKey(domain)) {
-                String host = config.getString(domain).split(":")[0];
-                int port = Integer.parseInt(config.getString(domain).split(":")[1]);
-                var socket = new Socket(host, port);
-                var inSend = new Scanner(socket.getInputStream());
-                var outSend = new PrintWriter(socket.getOutputStream(), true);
-                System.out.println("Connected with Mailbox Server " + domain);
-                System.out.println(inSend.nextLine());
-                System.out.println("begin");
-                outSend.write("begin\n");
-                outSend.flush();
-                System.out.println(inSend.nextLine());
-                outSend.write("to " + recipient + "\n");
-                System.out.println("to " + recipient);
-                outSend.flush();
-                System.out.println(inSend.nextLine());
-                System.out.println("quit");
-                outSend.write("quit\n");
-                outSend.flush();
-                System.out.println(inSend.nextLine());
+                put(domainsWithUsers, domain, user);
             }
+        }
+        for (String domain : domainsWithUsers.keySet()) {
+            String host = config.getString(domain).split(":")[0];
+            int port = Integer.parseInt(config.getString(domain).split(":")[1]);
+            var socket = new Socket(host, port);
+            var inSend = new Scanner(socket.getInputStream());
+            var outSend = new PrintWriter(socket.getOutputStream(), true);
+            System.out.println("Connected with Mailbox Server " + domain);
+            System.out.println(inSend.nextLine());
+            System.out.println("begin");
+            outSend.write("begin\n");
+            outSend.flush();
+            System.out.println(inSend.nextLine());
+            StringJoiner joiner = new StringJoiner(",");
+            for (String user : domainsWithUsers.get(domain)) {
+                joiner.add(user + "@" + domain);
+            }
+            System.out.println("to " + joiner.toString());
+            outSend.write("to " + joiner.toString() + "\n");
+            outSend.flush();
+            System.out.println(inSend.nextLine());
+            System.out.println("from " + message.getSender());
+            outSend.write("from " + message.getSender() + "\n");
+            outSend.flush();
+            System.out.println(inSend.nextLine());
+            System.out.println("subject " + message.getSubject());
+            outSend.write("subject " + message.getSubject() + "\n");
+            outSend.flush();
+            System.out.println(inSend.nextLine());
+            System.out.println("data " + message.getContent());
+            outSend.write("data " + message.getContent() + "\n");
+            outSend.flush();
+            System.out.println(inSend.nextLine());
+            System.out.println("send");
+            outSend.write("send\n");
+            outSend.flush();
+            System.out.println(inSend.nextLine());
+            System.out.println("quit");
+            outSend.write("quit\n");
+            outSend.flush();
+            System.out.println(inSend.nextLine());
         }
     }
 
     private void checkWhichAreFalse(boolean[] checks) {
+        StringJoiner joiner = new StringJoiner(" ");
+        joiner.add("error");
         if (!checks[0]) {
-            out.println("error no recipients");
+            joiner.add("no recipients");
         }
         if (!checks[1]) {
-            out.println("error no sender");
+            joiner.add("no sender");
         }
         if (!checks[2]) {
-            out.println("error no subject");
+            joiner.add("no subject");
         }
         if (!checks[3]) {
-            out.println("error no content");
+            joiner.add("no content");
         }
+        out.println(joiner.toString());
     }
 
     private static boolean areAllTrue(boolean[] array)
     {
         for(boolean b : array) if(!b) return false;
         return true;
+    }
+
+    private static void put(Hashtable<String,List<String>> ht, String key, String value) {
+        List<String> list = ht.computeIfAbsent(key, k -> new ArrayList<String>());
+        list.add(value);
     }
 }
