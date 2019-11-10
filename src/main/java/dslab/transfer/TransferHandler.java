@@ -153,33 +153,38 @@ public class TransferHandler implements Runnable{
         for (String domain : domainsWithUsers.keySet()) {
             String host = config.getString(domain).split(":")[0];
             int port = Integer.parseInt(config.getString(domain).split(":")[1]);
-            var socket = new Socket(host, port);
-            var inSend = new Scanner(socket.getInputStream());
-            var outSend = new PrintWriter(socket.getOutputStream(), true);
-            outSend.write("begin\n");
-            outSend.flush();
-            StringJoiner joiner = new StringJoiner(",");
-            for (String user : domainsWithUsers.get(domain)) {
-                joiner.add(user + "@" + domain);
-            }
-            outSend.write("to " + joiner.toString() + "\n");
-            outSend.flush();
-            if (inSend.nextLine().startsWith("error unknown recipient")) {
+            try {
+                var socket = new Socket(host, port);
+                var inSend = new Scanner(socket.getInputStream());
+                var outSend = new PrintWriter(socket.getOutputStream(), true);
+                outSend.write("begin\n");
+                outSend.flush();
+                StringJoiner joiner = new StringJoiner(",");
+                for (String user : domainsWithUsers.get(domain)) {
+                    joiner.add(user + "@" + domain);
+                }
+                outSend.write("to " + joiner.toString() + "\n");
+                outSend.flush();
+                if (inSend.nextLine().startsWith("error unknown recipient")) {
+                    sendErrorMessage();
+                    return;
+                }
+                outSend.write("from " + message.getSender() + "\n");
+                outSend.flush();
+                outSend.write("subject " + message.getSubject() + "\n");
+                outSend.flush();
+                outSend.write("data " + message.getContent() + "\n");
+                outSend.flush();
+                outSend.write("send\n");
+                outSend.flush();
+                outSend.write("quit\n");
+                outSend.flush();
+
+                sendDataToMonitoringServer(config.getString(domain), message.getSender());
+            } catch (ConnectException e) {
                 sendErrorMessage();
                 return;
             }
-            outSend.write("from " + message.getSender() + "\n");
-            outSend.flush();
-            outSend.write("subject " + message.getSubject() + "\n");
-            outSend.flush();
-            outSend.write("data " + message.getContent() + "\n");
-            outSend.flush();
-            outSend.write("send\n");
-            outSend.flush();
-            outSend.write("quit\n");
-            outSend.flush();
-
-            sendDataToMonitoringServer(config.getString(domain), message.getSender());
         }
     }
 
@@ -213,26 +218,30 @@ public class TransferHandler implements Runnable{
         if (config.containsKey(domain)) {
             String host = config.getString(domain).split(":")[0];
             int port = Integer.parseInt(config.getString(domain).split(":")[1]);
-            var socket = new Socket(host, port);
-            var inSend = new Scanner(socket.getInputStream());
-            var outSend = new PrintWriter(socket.getOutputStream(), true);
-            outSend.write("begin\n");
-            outSend.flush();
-            outSend.write("to " + message.getSender() + "\n");
-            outSend.flush();
-            if (inSend.nextLine().startsWith("error unknown recipient")) {
-                return;
+            try {
+                var socket = new Socket(host, port);
+                var inSend = new Scanner(socket.getInputStream());
+                var outSend = new PrintWriter(socket.getOutputStream(), true);
+                outSend.write("begin\n");
+                outSend.flush();
+                outSend.write("to " + message.getSender() + "\n");
+                outSend.flush();
+                if (inSend.nextLine().startsWith("error unknown recipient")) {
+                    return;
+                }
+                outSend.write("from " + message.getSender() + "\n");
+                outSend.flush();
+                outSend.write("subject error mail not delivered\n");
+                outSend.flush();
+                outSend.write("data error unkown recipient " + user + "\n");
+                outSend.flush();
+                outSend.write("send\n");
+                outSend.flush();
+                outSend.write("quit\n");
+                outSend.flush();
+            } catch (ConnectException e) {
+                logger.error("Error can't reach " + config.getString(domain) + " ... message discarded");
             }
-            outSend.write("from " + message.getSender() + "\n");
-            outSend.flush();
-            outSend.write("subject error mail not delivered\n");
-            outSend.flush();
-            outSend.write("data error unkown recipient " + user + "\n");
-            outSend.flush();
-            outSend.write("send\n");
-            outSend.flush();
-            outSend.write("quit\n");
-            outSend.flush();
         }
     }
 
