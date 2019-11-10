@@ -2,18 +2,25 @@ package dslab.transfer;
 
 import java.io.*;
 import java.net.ServerSocket;
+import java.net.SocketException;
 import java.util.concurrent.Executors;
 
+import at.ac.tuwien.dsg.orvell.Shell;
+import at.ac.tuwien.dsg.orvell.StopShellException;
 import dslab.ComponentFactory;
 import dslab.util.Config;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class TransferServer implements ITransferServer, Runnable {
 
-    private ServerSocket server;
+    private ServerSocket listener;
     private String componentId;
     private Config config;
     private InputStream in;
     private PrintStream out;
+    private volatile boolean running = true;
+    private final static Log logger = LogFactory.getFactory().getInstance(TransferServer.class);
 
     /**
      * Creates a new server instance.
@@ -34,25 +41,38 @@ public class TransferServer implements ITransferServer, Runnable {
     @Override
     public void run() {
         // TODO
+        Shell shell = new Shell(this.in, this.out)
+                .register("shutdown", (input, context) -> {
+                    shutdown();
+                    throw new StopShellException();
+                });
+
         new Thread(() -> {
-            try (var listener = new ServerSocket(config.getInt("tcp.port"))) {
+            try {
                 System.out.println("The tranfer server is running...");
+                listener = new ServerSocket(config.getInt("tcp.port"));
                 var pool = Executors.newFixedThreadPool(20);
-                while (true) {
+                while (running) {
                     pool.execute(new TransferHandler(listener.accept(), config));
                 }
+            } catch (SocketException e) {
+                logger.error("Socket Error: " + e.getMessage());
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("IO Error: " + e.getMessage());
             }
         }).start();
+
+        shell.run();
     }
 
     @Override
     public void shutdown() {
         // TODO
-        if (server != null) {
+        running = false;
+        if (listener != null && !listener.isClosed()) {
             try {
-                server.close();
+                listener.close();
+                System.out.println("The mailbox DMTP server is not running anymore...");
             } catch (IOException e) {
                 System.err.println("Error while closing server socket: " + e.getMessage());
             }

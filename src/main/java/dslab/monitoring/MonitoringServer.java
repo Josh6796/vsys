@@ -1,10 +1,13 @@
 package dslab.monitoring;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.DatagramSocket;
 import java.net.ServerSocket;
 
+import at.ac.tuwien.dsg.orvell.Shell;
+import at.ac.tuwien.dsg.orvell.StopShellException;
 import dslab.ComponentFactory;
 import dslab.util.Config;
 
@@ -24,6 +27,7 @@ public class MonitoringServer implements IMonitoringServer {
     private Config config;
     private InputStream in;
     private PrintStream out;
+    private volatile boolean running = true;
 
     public MonitoringServer(String componentId, Config config, InputStream in, PrintStream out) {
         // TODO
@@ -36,6 +40,14 @@ public class MonitoringServer implements IMonitoringServer {
     @Override
     public void run() {
         // TODO
+        Shell shell = new Shell(this.in, this.out)
+                .register("shutdown", (input, context) -> {
+                    shutdown();
+                    throw new StopShellException();
+                });
+
+
+        shell.run();
     }
 
     @Override
@@ -51,6 +63,7 @@ public class MonitoringServer implements IMonitoringServer {
     @Override
     public void shutdown() {
         // TODO
+        running = false;
     }
 
     public static void main(String[] args) throws Exception {

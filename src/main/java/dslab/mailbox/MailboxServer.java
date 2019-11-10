@@ -4,23 +4,31 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.ServerSocket;
+import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.concurrent.Executors;
 
+import at.ac.tuwien.dsg.orvell.Shell;
+import at.ac.tuwien.dsg.orvell.StopShellException;
 import dslab.ComponentFactory;
 import dslab.message.Message;
 import dslab.util.Config;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class MailboxServer implements IMailboxServer, Runnable {
 
-    private ServerSocket server;
+    private ServerSocket dmtpListener;
+    private ServerSocket dmapListener;
     private String componentId;
     private Config config;
     private InputStream in;
     private PrintStream out;
     private Hashtable<String,HashMap<Integer,Message>> userMessages;
+    private volatile boolean dmtpRunning = true;
+    private volatile boolean dmapRunning = true;
+    private final static Log logger = LogFactory.getFactory().getInstance(MailboxServer.class);
 
     /**
      * Creates a new server instance.
@@ -41,38 +49,62 @@ public class MailboxServer implements IMailboxServer, Runnable {
     @Override
     public void run() {
         // TODO
+        Shell shell = new Shell(this.in, this.out)
+                .register("shutdown", (input, context) -> {
+                    shutdown();
+                    throw new StopShellException();
+                });
+
         userMessages = new Hashtable<String, HashMap<Integer,Message>>();
         new Thread(() -> {
-            try (var dmtpListener = new ServerSocket(config.getInt("dmtp.tcp.port"))) {
+            try {
                 System.out.println("The mailbox DMTP server is running...");
+                dmtpListener = new ServerSocket(config.getInt("dmtp.tcp.port"));
                 var pool = Executors.newFixedThreadPool(20);
-                while (true) {
+                while (dmtpRunning) {
                     pool.execute(new MailboxDMTPHandler(dmtpListener.accept(), config, userMessages));
                 }
+            } catch (SocketException e) {
+                logger.error("Socket Error: " + e.getMessage());
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("IO Error: " + e.getMessage());
             }
         }).start();
         new Thread(() -> {
-            try (var dmapListener = new ServerSocket(config.getInt("dmap.tcp.port"))) {
+            try  {
                 System.out.println("The mailbox DMAP server is running...");
+                dmapListener = new ServerSocket(config.getInt("dmap.tcp.port"));
                 var pool = Executors.newFixedThreadPool(20);
-                while (true) {
+                while (dmapRunning) {
                     pool.execute(new MailboxDMAPHandler(dmapListener.accept(), config, userMessages));
                 }
+            } catch (SocketException e) {
+                logger.error("Socket Error: " + e.getMessage());
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("IO Error: " + e.getMessage());
             }
         }).start();
-        shutdown();
+
+        shell.run();
     }
 
     @Override
     public void shutdown() {
         // TODO
-        if (server != null) {
+        if (!dmtpListener.isClosed()) {
             try {
-                server.close();
+                dmtpRunning = false;
+                dmtpListener.close();
+                System.out.println("The mailbox DMTP server is not running anymore...");
+            } catch (IOException e) {
+                System.err.println("Error while closing server socket: " + e.getMessage());
+            }
+        }
+        if (!dmapListener.isClosed()) {
+            try {
+                dmapRunning = false;
+                dmapListener.close();
+                System.out.println("The mailbox DMAP server is not running anymore...");
             } catch (IOException e) {
                 System.err.println("Error while closing server socket: " + e.getMessage());
             }
