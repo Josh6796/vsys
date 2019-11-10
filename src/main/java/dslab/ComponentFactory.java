@@ -34,18 +34,8 @@ public final class ComponentFactory {
      */
     public static IMonitoringServer createMonitoringServer(String componentId, InputStream in, PrintStream out)
             throws Exception {
-        /*
-         * TODO: Here you can modify the code (if necessary) to instantiate your components
-         */
+
         Config config = new Config(componentId);
-        /*
-        String userConfigStr = config.getString("users.config");
-        Config userConfig = new Config(userConfigStr.substring(0, userConfigStr.lastIndexOf('.')));
-        Set<String> users =  userConfig.listKeys();
-        for(String user : users){
-            config.setProperty(user, userConfig.getString(user));
-        }
-         */
         return new MonitoringServer(componentId, config, in, out);
     }
 
@@ -59,9 +49,6 @@ public final class ComponentFactory {
      */
     public static IMailboxServer createMailboxServer(String componentId, InputStream in, PrintStream out)
             throws Exception {
-        /*
-         * TODO: Here you can modify the code (if necessary) to instantiate your components
-         */
 
         Config config = new Config(componentId);
         Config userConfig = new Config("users-" + componentId.split("-", 2)[1]);
@@ -82,9 +69,7 @@ public final class ComponentFactory {
      */
     public static ITransferServer createTransferServer(String componentId, InputStream in, PrintStream out)
             throws Exception {
-        /*
-         * TODO: Here you can modify the code (if necessary) to instantiate your components
-         */
+
         Config config = new Config(componentId);
         Config domainConfig = new Config("domains");
         Set<String> domains =  domainConfig.listKeys();

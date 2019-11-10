@@ -39,7 +39,6 @@ public class MailboxServer implements IMailboxServer, Runnable {
      * @param out the output stream to write console output to
      */
     public MailboxServer(String componentId, Config config, InputStream in, PrintStream out) {
-        // TODO
         this.componentId = componentId;
         this.config = config;
         this.in = in;
@@ -48,7 +47,6 @@ public class MailboxServer implements IMailboxServer, Runnable {
 
     @Override
     public void run() {
-        // TODO
         Shell shell = new Shell(this.in, this.out)
                 .register("shutdown", (input, context) -> {
                     shutdown();
@@ -90,7 +88,6 @@ public class MailboxServer implements IMailboxServer, Runnable {
 
     @Override
     public void shutdown() {
-        // TODO
         if (!dmtpListener.isClosed()) {
             try {
                 dmtpRunning = false;
