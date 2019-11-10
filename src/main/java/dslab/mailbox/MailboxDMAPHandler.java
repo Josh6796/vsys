@@ -3,6 +3,8 @@ package dslab.mailbox;
 import dslab.exceptions.DMAPException;
 import dslab.message.Message;
 import dslab.util.Config;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
 import java.net.Socket;
@@ -16,6 +18,7 @@ public class MailboxDMAPHandler implements Runnable{
     private boolean loggedIn;
     private Hashtable<String, HashMap<Integer,Message>> userMessages;
     private String currentUser;
+    private final static Log logger = LogFactory.getFactory().getInstance(MailboxDMAPHandler.class);
 
     MailboxDMAPHandler(Socket socket, Config config, Hashtable<String,HashMap<Integer,Message>> userMessages) {
         this.socket = socket;
@@ -26,15 +29,15 @@ public class MailboxDMAPHandler implements Runnable{
 
     @Override
     public void run() {
-        System.out.println("Connected: " + socket + " on DMAP Server");
+        logger.info("Connected: " + socket + " on DMAP Server");
         try {
             setup();
             processCommands();
         } catch (Exception e) {
-            System.out.println("Error:" + socket + " on DMAP Server");
+            logger.error("Error:" + socket + " on DMAP Server");
         } finally {
             try { socket.close(); } catch (IOException ignored) {}
-            System.out.println("Closed: " + socket + " on DMAP Server");
+            logger.info("Closed: " + socket + " on DMAP Server");
         }
     }
 

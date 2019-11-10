@@ -3,6 +3,8 @@ package dslab.mailbox;
 import dslab.exceptions.DMTPException;
 import dslab.message.Message;
 import dslab.util.Config;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
 import java.net.Socket;
@@ -18,7 +20,8 @@ public class MailboxDMTPHandler implements Runnable{
     private boolean[] checks;
     private Message message;
     private Hashtable<String,HashMap<Integer,Message>> userMessages;
-    private static AtomicInteger messageCount = new AtomicInteger(0);;
+    private static AtomicInteger messageCount = new AtomicInteger(0);
+    private final static Log logger = LogFactory.getFactory().getInstance(MailboxDMTPHandler.class);
 
     MailboxDMTPHandler(Socket socket, Config config, Hashtable<String,HashMap<Integer,Message>> userMessages) {
         this.socket = socket;
@@ -31,15 +34,15 @@ public class MailboxDMTPHandler implements Runnable{
 
     @Override
     public void run() {
-        System.out.println("Connected: " + socket + " on DMTP Server");
+        logger.info("Connected: " + socket + " on DMTP Server");
         try {
             setup();
             processCommands();
         } catch (Exception e) {
-            System.out.println("Error:" + socket + " on DMTP Server");
+            logger.error("Error:" + socket + " on DMTP Server");
         } finally {
             try { socket.close(); } catch (IOException ignored) {}
-            System.out.println("Closed: " + socket + " on DMTP Server");
+            logger.info("Closed: " + socket + " on DMTP Server");
         }
     }
 

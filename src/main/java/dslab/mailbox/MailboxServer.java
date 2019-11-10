@@ -58,7 +58,7 @@ public class MailboxServer implements IMailboxServer, Runnable {
         userMessages = new Hashtable<String, HashMap<Integer,Message>>();
         new Thread(() -> {
             try {
-                System.out.println("The mailbox DMTP server is running...");
+                logger.info("The mailbox DMTP server is running...");
                 dmtpListener = new ServerSocket(config.getInt("dmtp.tcp.port"));
                 var pool = Executors.newFixedThreadPool(20);
                 while (dmtpRunning) {
@@ -72,7 +72,7 @@ public class MailboxServer implements IMailboxServer, Runnable {
         }).start();
         new Thread(() -> {
             try  {
-                System.out.println("The mailbox DMAP server is running...");
+                logger.info("The mailbox DMAP server is running...");
                 dmapListener = new ServerSocket(config.getInt("dmap.tcp.port"));
                 var pool = Executors.newFixedThreadPool(20);
                 while (dmapRunning) {
@@ -95,18 +95,18 @@ public class MailboxServer implements IMailboxServer, Runnable {
             try {
                 dmtpRunning = false;
                 dmtpListener.close();
-                System.out.println("The mailbox DMTP server is not running anymore...");
+                logger.info("The mailbox DMTP server is not running anymore...");
             } catch (IOException e) {
-                System.err.println("Error while closing server socket: " + e.getMessage());
+                logger.error("Error while closing server socket: " + e.getMessage());
             }
         }
         if (!dmapListener.isClosed()) {
             try {
                 dmapRunning = false;
                 dmapListener.close();
-                System.out.println("The mailbox DMAP server is not running anymore...");
+                logger.info("The mailbox DMAP server is not running anymore...");
             } catch (IOException e) {
-                System.err.println("Error while closing server socket: " + e.getMessage());
+                logger.error("Error while closing server socket: " + e.getMessage());
             }
         }
     }

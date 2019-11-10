@@ -14,7 +14,7 @@ import org.apache.commons.logging.LogFactory;
 
 public class TransferServer implements ITransferServer, Runnable {
 
-    private ServerSocket listener;
+    private ServerSocket socket;
     private String componentId;
     private Config config;
     private InputStream in;
@@ -31,7 +31,6 @@ public class TransferServer implements ITransferServer, Runnable {
      * @param out the output stream to write console output to
      */
     public TransferServer(String componentId, Config config, InputStream in, PrintStream out) {
-        // TODO
         this.componentId = componentId;
         this.config = config;
         this.in = in;
@@ -40,7 +39,6 @@ public class TransferServer implements ITransferServer, Runnable {
 
     @Override
     public void run() {
-        // TODO
         Shell shell = new Shell(this.in, this.out)
                 .register("shutdown", (input, context) -> {
                     shutdown();
@@ -49,11 +47,11 @@ public class TransferServer implements ITransferServer, Runnable {
 
         new Thread(() -> {
             try {
-                System.out.println("The tranfer server is running...");
-                listener = new ServerSocket(config.getInt("tcp.port"));
+                logger.info("The tranfer server is running...");
+                socket = new ServerSocket(config.getInt("tcp.port"));
                 var pool = Executors.newFixedThreadPool(20);
                 while (running) {
-                    pool.execute(new TransferHandler(listener.accept(), config));
+                    pool.execute(new TransferHandler(socket.accept(), config));
                 }
             } catch (SocketException e) {
                 logger.error("Socket Error: " + e.getMessage());
@@ -67,14 +65,13 @@ public class TransferServer implements ITransferServer, Runnable {
 
     @Override
     public void shutdown() {
-        // TODO
         running = false;
-        if (listener != null && !listener.isClosed()) {
+        if (socket != null && !socket.isClosed()) {
             try {
-                listener.close();
-                System.out.println("The mailbox DMTP server is not running anymore...");
+                socket.close();
+                logger.info("The transfer server is not running anymore...");
             } catch (IOException e) {
-                System.err.println("Error while closing server socket: " + e.getMessage());
+                logger.error("Error while closing server socket: " + e.getMessage());
             }
         }
     }

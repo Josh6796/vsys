@@ -3,10 +3,11 @@ package dslab.transfer;
 import dslab.exceptions.DMTPException;
 import dslab.message.Message;
 import dslab.util.Config;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-import javax.swing.plaf.TableHeaderUI;
 import java.io.*;
-import java.net.Socket;
+import java.net.*;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -20,6 +21,7 @@ public class TransferHandler implements Runnable{
     private boolean[] checks;
     private Message message;
     private BlockingQueue<Message> messageQueue;
+    private final static Log logger = LogFactory.getFactory().getInstance(TransferHandler.class);
 
     TransferHandler(Socket socket, Config config) {
         this.socket = socket;
@@ -32,16 +34,16 @@ public class TransferHandler implements Runnable{
 
     @Override
     public void run() {
-        System.out.println("Connected: " + socket);
+        logger.info("Connected: " + socket);
         try {
             setup();
             startSendCommandThread();
             processCommands();
         } catch (Exception e) {
-            System.out.println("Error:" + socket);
+            logger.error("Error:" + socket);
         } finally {
             try { socket.close(); } catch (IOException ignored) {}
-            System.out.println("Closed: " + socket);
+            logger.info("Closed: " + socket);
         }
     }
 
@@ -176,7 +178,18 @@ public class TransferHandler implements Runnable{
             outSend.flush();
             outSend.write("quit\n");
             outSend.flush();
+
+            sendDataToMonitoringServer(config.getString(domain), message.getSender());
         }
+    }
+
+    private void sendDataToMonitoringServer(String server, String address) throws IOException {
+        DatagramSocket socket = new DatagramSocket();
+        String data = String.join(" ", server, address);
+        byte[] sendData = data.getBytes();
+        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, InetAddress.getLocalHost(), config.getInt("monitoring.port"));
+        socket.send(sendPacket);
+        socket.close();
     }
 
     private void startSendCommandThread() throws InterruptedException {
