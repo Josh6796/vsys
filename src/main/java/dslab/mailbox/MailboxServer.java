@@ -19,8 +19,8 @@ import org.apache.commons.logging.LogFactory;
 
 public class MailboxServer implements IMailboxServer, Runnable {
 
-    private ServerSocket dmtpListener;
-    private ServerSocket dmapListener;
+    private ServerSocket dmtpSocket;
+    private ServerSocket dmapSocket;
     private String componentId;
     private Config config;
     private InputStream in;
@@ -57,10 +57,10 @@ public class MailboxServer implements IMailboxServer, Runnable {
         new Thread(() -> {
             try {
                 logger.info("The mailbox DMTP server is running...");
-                dmtpListener = new ServerSocket(config.getInt("dmtp.tcp.port"));
+                dmtpSocket = new ServerSocket(config.getInt("dmtp.tcp.port"));
                 var pool = Executors.newFixedThreadPool(20);
                 while (dmtpRunning) {
-                    pool.execute(new MailboxDMTPHandler(dmtpListener.accept(), config, userMessages));
+                    pool.execute(new MailboxDMTPHandler(dmtpSocket.accept(), config, userMessages));
                 }
             } catch (SocketException e) {
                 logger.error("Socket Error: " + e.getMessage());
@@ -71,10 +71,10 @@ public class MailboxServer implements IMailboxServer, Runnable {
         new Thread(() -> {
             try  {
                 logger.info("The mailbox DMAP server is running...");
-                dmapListener = new ServerSocket(config.getInt("dmap.tcp.port"));
+                dmapSocket = new ServerSocket(config.getInt("dmap.tcp.port"));
                 var pool = Executors.newFixedThreadPool(20);
                 while (dmapRunning) {
-                    pool.execute(new MailboxDMAPHandler(dmapListener.accept(), config, userMessages));
+                    pool.execute(new MailboxDMAPHandler(dmapSocket.accept(), config, userMessages));
                 }
             } catch (SocketException e) {
                 logger.error("Socket Error: " + e.getMessage());
@@ -88,19 +88,19 @@ public class MailboxServer implements IMailboxServer, Runnable {
 
     @Override
     public void shutdown() {
-        if (!dmtpListener.isClosed()) {
+        if (dmtpSocket != null && !dmtpSocket.isClosed()) {
             try {
                 dmtpRunning = false;
-                dmtpListener.close();
+                dmtpSocket.close();
                 logger.info("The mailbox DMTP server is not running anymore...");
             } catch (IOException e) {
                 logger.error("Error while closing server socket: " + e.getMessage());
             }
         }
-        if (!dmapListener.isClosed()) {
+        if (dmapSocket != null && !dmapSocket.isClosed()) {
             try {
                 dmapRunning = false;
-                dmapListener.close();
+                dmapSocket.close();
                 logger.info("The mailbox DMAP server is not running anymore...");
             } catch (IOException e) {
                 logger.error("Error while closing server socket: " + e.getMessage());
