@@ -108,20 +108,34 @@ public class MailboxDMTPHandler implements Runnable{
         String[] addresses = s.split(",");
         ArrayList<String> recipients = new ArrayList<>();
 
+        if (s.isEmpty()) {
+            out.println("error protocol error");
+            throw new DMTPException("error protocol error");
+        }
         for (String address:addresses) {
-            recipients.add(address);
-            String user = address.split("@")[0];
-            if (!config.containsKey(user)) {
-                out.println("error unknown recipient " + user);
-                return;
+            if(message.isValidEmailAddress(address)) {
+                String user = address.split("@")[0];
+                String domain = address.split("@")[1];
+
+                if (config.getString("domain").equals(domain)) {
+                    if (config.containsKey(user)) {
+                        recipients.add(address);
+                    } else {
+                        out.println("error unknown recipient " + user);
+                        return;
+                    }
+                }
+            } else {
+                out.println("error email address not valid");
+                throw new DMTPException("error email address not valid");
             }
         }
         if (!recipients.isEmpty()) {
             out.println("ok " + recipients.size());
             message.setRecipients(recipients);
         } else {
-            out.println("error protocol error");
-            throw new DMTPException("error protocol error");
+            out.println("error no recipients");
+            throw new DMTPException("error no recipients");
         }
     }
 

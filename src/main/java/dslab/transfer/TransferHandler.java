@@ -106,16 +106,16 @@ public class TransferHandler implements Runnable{
     }
 
     private void processToCommand(String s) throws DMTPException {
-        String[] mails = s.split(",");
+        String[] addresses = s.split(",");
         ArrayList<String> recipients = new ArrayList<>();
 
         if (s.isEmpty()) {
             out.println("error protocol error");
             throw new DMTPException("error protocol error");
         }
-        for (String str:mails) {
-            if (message.isValidEmailAddress(str)) {
-                recipients.add(str);
+        for (String  address:addresses) {
+            if (message.isValidEmailAddress(address)) {
+                recipients.add(address);
             } else {
                 out.println("error email address not valid");
                 throw new DMTPException("error email address not valid");
@@ -125,8 +125,8 @@ public class TransferHandler implements Runnable{
             out.println("ok " + recipients.size());
             message.setRecipients(recipients);
         } else {
-            out.println("error protocol error");
-            throw new DMTPException("error protocol error");
+            out.println("error no recipients");
+            throw new DMTPException("error no recipients");
         }
     }
 

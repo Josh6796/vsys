@@ -50,35 +50,31 @@ public class MailboxDMAPHandler implements Runnable{
     private void processCommands() throws DMAPException {
         while (in.hasNextLine()) {
             var command = in.nextLine();
-            try {
-                if (command.equals("quit")) {
-                    out.println("ok bye");
-                    return;
-                } else if (command.split(" ", 2)[0].equals("login")) {
-                    processLoginCommand(command.split(" ", 2)[1]);
-                } else if (command.equals("list")) {
-                    if (loggedIn) {
-                        processListCommand();
-                    } else out.println("error not logged in");
-                } else if (command.split(" ", 2)[0].equals("show")) {
-                    if (loggedIn) {
-                        processShowCommand(command.split(" ",2)[1]);
-                    } else out.println("error not logged in");
-                } else if (command.split(" ", 2)[0].equals("delete")) {
-                    if (loggedIn) {
-                        processDeleteCommand(command.split(" ", 2)[1]);
-                    } else out.println("error not logged in");
-                } else if (command.equals("logout")) {
-                    if (loggedIn) {
-                        loggedIn = false;
-                        out.println("ok");
-                    } else out.println("error not logged in");
-                } else {
-                    out.println("error protocol error");
-                    throw new DMAPException("error protocol error");
-                }
-            } catch (Exception e) {
-                e.printStackTrace(out);
+            if (command.equals("quit")) {
+                out.println("ok bye");
+                return;
+            } else if (command.split(" ", 2)[0].equals("login")) {
+                processLoginCommand(command.split(" ", 2)[1]);
+            } else if (command.equals("list")) {
+                if (loggedIn) {
+                    processListCommand();
+                } else out.println("error not logged in");
+            } else if (command.split(" ", 2)[0].equals("show")) {
+                if (loggedIn) {
+                    processShowCommand(command.split(" ",2)[1]);
+                } else out.println("error not logged in");
+            } else if (command.split(" ", 2)[0].equals("delete")) {
+                if (loggedIn) {
+                    processDeleteCommand(command.split(" ", 2)[1]);
+                } else out.println("error not logged in");
+            } else if (command.equals("logout")) {
+                if (loggedIn) {
+                    loggedIn = false;
+                    out.println("ok");
+                } else out.println("error not logged in");
+            } else {
+                out.println("error protocol error");
+                throw new DMAPException("error protocol error");
             }
         }
     }
