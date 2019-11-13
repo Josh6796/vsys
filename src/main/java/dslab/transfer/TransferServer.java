@@ -80,5 +80,4 @@ public class TransferServer implements ITransferServer, Runnable {
         ITransferServer server = ComponentFactory.createTransferServer(args[0], System.in, System.out);
         server.run();
     }
-
 }
