@@ -189,7 +189,7 @@ public class TransferHandler implements Runnable{
     }
 
     private void sendDataToMonitoringServer(String address) throws IOException {
-        String server = InetAddress.getLocalHost() + ":" + config.getInt("tcp.port");
+        String server = "127.0.0.1:" + config.getInt("tcp.port");
         DatagramSocket socket = new DatagramSocket();
         String data = String.join(" ", server, address);
         byte[] sendData = data.getBytes();
