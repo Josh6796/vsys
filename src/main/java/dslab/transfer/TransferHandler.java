@@ -180,7 +180,7 @@ public class TransferHandler implements Runnable{
                 outSend.write("quit\n");
                 outSend.flush();
 
-                sendDataToMonitoringServer(config.getString(domain), message.getSender());
+                sendDataToMonitoringServer(String.join(":", InetAddress.getLocalHost(), config.getInt("tcp.port")), message.getSender());
             } catch (ConnectException e) {
                 sendErrorMessage();
                 return;
