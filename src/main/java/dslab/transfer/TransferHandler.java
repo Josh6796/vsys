@@ -180,7 +180,7 @@ public class TransferHandler implements Runnable{
                 outSend.write("quit\n");
                 outSend.flush();
 
-                sendDataToMonitoringServer(String.join(":", InetAddress.getLocalHost(), config.getInt("tcp.port")), message.getSender());
+                sendDataToMonitoringServer(message.getSender());
             } catch (ConnectException e) {
                 sendErrorMessage();
                 return;
@@ -188,11 +188,12 @@ public class TransferHandler implements Runnable{
         }
     }
 
-    private void sendDataToMonitoringServer(String server, String address) throws IOException {
+    private void sendDataToMonitoringServer(String address) throws IOException {
+        String server = InetAddress.getLocalHost() + ":" + config.getInt("tcp.port");
         DatagramSocket socket = new DatagramSocket();
         String data = String.join(" ", server, address);
         byte[] sendData = data.getBytes();
-        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, InetAddress.getLocalHost(), config.getInt("monitoring.port"));
+        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, InetAddress.getByName(config.getString("monitoring.host")), config.getInt("monitoring.port"));
         socket.send(sendPacket);
         socket.close();
     }
