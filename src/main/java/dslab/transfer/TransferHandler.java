@@ -148,6 +148,9 @@ public class TransferHandler implements Runnable{
             String domain = recipient.split("@")[1];
             if (config.containsKey(domain)) {
                 put(domainsWithUsers, domain, user);
+            } else{
+                sendErrorMessage();
+                return;
             }
         }
         for (String domain : domainsWithUsers.keySet()) {
@@ -169,7 +172,7 @@ public class TransferHandler implements Runnable{
                     sendErrorMessage();
                     return;
                 }
-                outSend.write("from " + message.getSender() + "\n");
+                outSend.write("from mailer@127.0.0.1\n");
                 outSend.flush();
                 outSend.write("subject " + message.getSubject() + "\n");
                 outSend.flush();
